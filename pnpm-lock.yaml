@@ -13,10 +13,12 @@ specifiers:
   eslint-plugin-node: ^11.1.0
   eslint-plugin-promise: ^5.1.0
   eslint-plugin-vue: ^8.0.3
+  three: ^0.146.0
   vue: ^3.2.13
 
 dependencies:
   core-js: 3.26.0
+  three: 0.146.0
   vue: 3.2.41
 
 devDependencies:
@@ -6734,6 +6736,10 @@ packages:
       schema-utils: 3.1.1
       webpack: 5.74.0
     dev: true
+
+  /three/0.146.0:
+    resolution: {integrity: sha512-1lvNfLezN6OJ9NaFAhfX4sm5e9YCzHtaRgZ1+B4C+Hv6TibRMsuBAM5/wVKzxjpYIlMymvgsHEFrrigEfXnb2A==}
+    dev: false
 
   /thunky/1.1.0:
     resolution: {integrity: sha512-eHY7nBftgThBqOyHGVN+l8gF0BucP09fMo0oO/Lb0w1OF80dJv+lDVpXG60WMQvkcxAkNybKsrEIE3ZtKGmPrA==}
