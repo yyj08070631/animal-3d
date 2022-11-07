@@ -1,6 +1,6 @@
 <template>
-  <canvas v-if="done" id="c"></canvas>
-  <div v-else id="loading">
+  <canvas v-show="done" id="c"></canvas>
+  <div v-show="!done" id="loading">
     <div>
       <div>Loading...</div>
       <div class="progress"><div id="progressbar" :style="{ width: progress }"></div></div>
@@ -19,10 +19,32 @@ export default {
   data () {
     return {
       done: false,
-      progress: ''
+      progress: '',
+      then: 0,
+      renderer: null,
+      camera: null,
+      scene: null,
+      mixers: []
     }
   },
-  created () {
+  mounted () {
+    const canvas = document.querySelector('#c')
+    this.renderer = new THREE.WebGLRenderer({ canvas })
+    const fov = 75
+    const aspect = 2 // 画布默认值
+    const near = 0.1
+    const far = 5
+    this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far)
+    this.camera.position.z = 2
+    this.scene = new THREE.Scene()
+    // const boxWidth = 1
+    // const boxHeight = 1
+    // const boxDepth = 1
+    // const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth)
+    // const material = new THREE.MeshBasicMaterial({ color: 0x44aa88 })
+    // const cube = new THREE.Mesh(geometry, material)
+    // scene.add(cube)
+
     const manager = new THREE.LoadingManager()
     const models = {
       pig: { url: '/models/animals/Pig.gltf' },
@@ -57,17 +79,60 @@ export default {
         const clonedScene = SkeletonUtils.clone(model.gltf.scene)
         const root = new THREE.Object3D()
         root.add(clonedScene)
-        scene.add(root)
+        this.scene.add(root)
         root.position.x = (ndx - 3) * 3
+
+        const mixer = new THREE.AnimationMixer(clonedScene)
+        const firstClip = Object.values(model.animations)[0]
+        const action = mixer.clipAction(firstClip)
+        action.play()
+        this.mixers.push(mixer)
       })
+      requestAnimationFrame(this.render)
     }
     manager.onProgress = (url, itemsLoaded, itemsTotal) => {
       this.progress = `${itemsLoaded / itemsTotal * 100 | 0}%`
+    }
+  },
+  methods: {
+    render () {
+      const now = Date.now() * 0.001 // 转换为秒
+      const deltaTime = now - this.then
+      this.then = now
+      if (this.resizeRendererToDisplaySize()) {
+        const canvas = this.renderer.domElement
+        this.camera.aspect = canvas.clientWidth / canvas.clientHeight
+        this.camera.updateProjectionMatrix()
+      }
+      for (const mixer of this.mixers) {
+        mixer.update(deltaTime)
+      }
+      this.renderer.render(this.scene, this.camera)
+      requestAnimationFrame(this.render)
+    },
+    resizeRendererToDisplaySize () {
+      const canvas = this.renderer.domElement
+      const width = canvas.clientWidth
+      const height = canvas.clientHeight
+      const needResize = canvas.width !== width || canvas.height !== height
+      if (needResize) {
+        this.renderer.setSize(width, height, false)
+      }
+      return needResize
     }
   }
 }
 </script>
 <style>
+html, body {
+  margin: 0;
+  height: 100%;
+}
+#c {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
 #loading {
   position: absolute;
   left: 0;
