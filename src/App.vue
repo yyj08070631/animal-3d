@@ -10,6 +10,7 @@
 <script>
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
 
 export default {
@@ -19,24 +20,24 @@ export default {
   data () {
     return {
       done: false,
-      progress: '',
-      then: 0,
-      renderer: null,
-      camera: null,
-      scene: null,
-      mixers: []
+      progress: ''
     }
   },
   mounted () {
     const canvas = document.querySelector('#c')
     this.renderer = new THREE.WebGLRenderer({ canvas })
-    const fov = 75
-    const aspect = 2 // 画布默认值
+    this.renderer.outputEncoding = THREE.sRGBEncoding
+    const fov = 45
+    const aspect = 2
     const near = 0.1
-    const far = 5
+    const far = 100
     this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far)
-    this.camera.position.z = 2
+    this.camera.position.set(0, 20, 40)
     this.scene = new THREE.Scene()
+    this.scene.background = new THREE.Color('white')
+    this.mixers = []
+    this.mixerInfos = []
+    this.then = 0
     // const boxWidth = 1
     // const boxHeight = 1
     // const boxDepth = 1
@@ -44,6 +45,20 @@ export default {
     // const material = new THREE.MeshBasicMaterial({ color: 0x44aa88 })
     // const cube = new THREE.Mesh(geometry, material)
     // scene.add(cube)
+    const controls = new OrbitControls(this.camera, canvas)
+    controls.target.set(0, 5, 0)
+    controls.update()
+
+    const addLight = (...pos) => {
+      const color = 0xFFFFFF
+      const intensity = 0.8
+      const light = new THREE.DirectionalLight(color, intensity)
+      light.position.set(...pos)
+      this.scene.add(light)
+      this.scene.add(light.target)
+    }
+    addLight(5, 5, 2)
+    addLight(-5, 5, 5)
 
     const manager = new THREE.LoadingManager()
     const models = {
@@ -83,16 +98,30 @@ export default {
         root.position.x = (ndx - 3) * 3
 
         const mixer = new THREE.AnimationMixer(clonedScene)
-        const firstClip = Object.values(model.animations)[0]
-        const action = mixer.clipAction(firstClip)
-        action.play()
-        this.mixers.push(mixer)
+        const actions = Object.values(model.animations).map((clip) => {
+          return mixer.clipAction(clip)
+        })
+        const mixerInfo = {
+          mixer,
+          actions,
+          actionNdx: -1
+        }
+        this.mixerInfos.push(mixerInfo)
+        this.playNextAction(mixerInfo)
       })
       requestAnimationFrame(this.render)
     }
     manager.onProgress = (url, itemsLoaded, itemsTotal) => {
       this.progress = `${itemsLoaded / itemsTotal * 100 | 0}%`
     }
+
+    window.addEventListener('keydown', (e) => {
+      const mixerInfo = this.mixerInfos[e.keyCode - 49]
+      if (!mixerInfo) {
+        return
+      }
+      this.playNextAction(mixerInfo)
+    })
   },
   methods: {
     render () {
@@ -104,7 +133,7 @@ export default {
         this.camera.aspect = canvas.clientWidth / canvas.clientHeight
         this.camera.updateProjectionMatrix()
       }
-      for (const mixer of this.mixers) {
+      for (const { mixer } of this.mixerInfos) {
         mixer.update(deltaTime)
       }
       this.renderer.render(this.scene, this.camera)
@@ -119,6 +148,18 @@ export default {
         this.renderer.setSize(width, height, false)
       }
       return needResize
+    },
+    playNextAction (mixerInfo) {
+      const { actions, actionNdx } = mixerInfo
+      const nextActionNdx = (actionNdx + 1) % actions.length
+      mixerInfo.actionNdx = nextActionNdx
+      actions.forEach((action, ndx) => {
+        const enabled = ndx === nextActionNdx
+        action.enabled = enabled
+        if (enabled) {
+          action.play()
+        }
+      })
     }
   }
 }
